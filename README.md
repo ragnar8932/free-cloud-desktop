@@ -1,2 +1,0 @@
-# RuUuUuDuUuUuP
-remote for Windows
