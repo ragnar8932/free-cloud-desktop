@@ -1,0 +1,61 @@
+name: Ubuntu Cloud SSH
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+
+    steps:
+      - name: 1. Set User Password and Enable SSH Password Login
+        env:
+          RDP_PASSWORD: ${{ secrets.RDP_PASSWORD }}
+        run: |
+          # Create the PersianPl user with sudo access
+          sudo useradd -m -s /bin/bash PersianPl || true
+          echo "PersianPl:$RDP_PASSWORD" | sudo chpasswd
+          echo "PersianPl ALL=(ALL) NOPASSWD:ALL" | sudo tee /etc/sudoers.d/persianpl
+
+          # Enable password authentication for SSH
+          sudo sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication yes/' /etc/ssh/sshd_config
+          sudo sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config
+          echo 'AllowUsers PersianPl' | sudo tee -a /etc/ssh/sshd_config
+          sudo systemctl restart ssh || sudo service ssh restart
+
+          echo "SSH is ready for the PersianPl user"
+
+      - name: 2. Install Content Tools
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y ffmpeg python3-pip imagemagick
+          pip3 install --upgrade pip
+          pip3 install Pillow requests
+          echo "Content tools installed (FFmpeg + Python + Pillow + ImageMagick)"
+
+      - name: 3. Install and Connect Tailscale
+        env:
+          TAILSCALE_AUTHKEY: ${{ secrets.TAILSCALE_AUTHKEY }}
+        run: |
+          curl -fsSL https://tailscale.com/install.sh | sudo sh
+          sudo tailscale up --authkey="$TAILSCALE_AUTHKEY" --hostname="github-ubuntu-ssh" --ssh
+          sleep 5
+
+          ts_ip=$(sudo tailscale ip -4)
+
+          echo ""
+          echo "=================================================="
+          echo "  >>> UBUNTU SSH SERVER IS READY! <<<"
+          echo "  Tailscale IP : $ts_ip"
+          echo "  Username     : PersianPl"
+          echo "  Password     : (stored in GitHub Secret RDP_PASSWORD)"
+          echo "  >> Connect:   ssh PersianPl@$ts_ip"
+          echo "=================================================="
+
+      - name: 4. Keep Server Alive for 6 Hours
+        run: |
+          for i in $(seq 1 360); do
+            sleep 60
+            echo "[$i/360] Server running..."
+          done
