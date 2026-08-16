@@ -30,26 +30,25 @@ jobs:
           pip3 install Pillow requests
 
           # --- Configure the XFCE session for xrdp ---
-          # 1) User session file: use startxfce4 with proper environment variables
-          sudo tee /home/PersianPl/.xsession > /dev/null <<'EOF'
-          export XDG_CONFIG_DIRS=/etc/xdg
-          export XDG_DATA_DIRS=/usr/share:/usr/local/share
-          export XDG_SESSION_DESKTOP=xfce
-          startxfce4
-          EOF
+          # 1) User session file
+          echo "startxfce4" | sudo tee /home/PersianPl/.xsession > /dev/null
           sudo chown PersianPl:PersianPl /home/PersianPl/.xsession
           sudo chmod +x /home/PersianPl/.xsession
 
-          # 2) Rewrite startwm.sh so the session and D-Bus start correctly
+          # 2) Rewrite startwm.sh — this directly fixes the two causes the
+          #    "failsafe session" error reports:
+          #      (a) D-Bus not running  -> launch via dbus-launch
+          #      (b) XDG_CONFIG_DIRS must include /etc -> add it explicitly
+          #    (Do NOT unset XDG_RUNTIME_DIR — xfconfd needs it.)
           sudo tee /etc/xrdp/startwm.sh > /dev/null <<'EOF'
           #!/bin/sh
           if [ -r /etc/profile ]; then . /etc/profile; fi
           if [ -r "$HOME/.profile" ]; then . "$HOME/.profile"; fi
-          unset DBUS_SESSION_BUS_ADDRESS
-          unset XDG_RUNTIME_DIR
-          export XDG_CONFIG_DIRS=/etc/xdg
+          export XDG_CURRENT_DESKTOP=XFCE
+          export XDG_SESSION_DESKTOP=xfce
+          export XDG_CONFIG_DIRS=/etc/xdg:/etc
           export XDG_DATA_DIRS=/usr/share:/usr/local/share
-          exec dbus-launch --exit-with-session startxfce4
+          exec dbus-launch --exit-with-session /usr/bin/startxfce4
           EOF
           sudo chmod +x /etc/xrdp/startwm.sh
 
@@ -57,7 +56,7 @@ jobs:
           sudo adduser xrdp ssl-cert || true
           sudo systemctl enable xrdp
           sudo systemctl restart xrdp
-          echo "XFCE desktop + xrdp (with correct session config) + content tools installed"
+          echo "XFCE desktop + xrdp (root-cause session fix) + content tools installed"
 
       - name: 3. Install and Connect Tailscale VPN
         env:
