@@ -18,32 +18,59 @@ jobs:
           echo "PersianPl ALL=(ALL) NOPASSWD:ALL" | sudo tee /etc/sudoers.d/persianpl
           echo "User PersianPl created"
 
-      - name: 2. Install XFCE Desktop, XRDP, and Content Tools
+      - name: 2. Install XFCE Desktop, xrdp, and Content Tools
         run: |
           sudo apt-get update -y
-          # Install the lightweight XFCE desktop environment and XRDP server
+
+          # Lightweight XFCE desktop + RDP server + D-Bus support
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
-            xfce4 xfce4-goodies xrdp \
+            xfce4 xfce4-goodies xrdp dbus-x11 \
             ffmpeg python3-pip imagemagick firefox
           pip3 install --upgrade pip
           pip3 install Pillow requests
 
-          # Configure XFCE as the default XRDP desktop session
-          echo "xfce4-session" | sudo tee /home/PersianPl/.xsession
+          # --- Configure the XFCE session for xrdp ---
+          # 1) User session file: use startxfce4 with proper environment variables
+          sudo tee /home/PersianPl/.xsession > /dev/null <<'EOF'
+          export XDG_CONFIG_DIRS=/etc/xdg
+          export XDG_DATA_DIRS=/usr/share:/usr/local/share
+          export XDG_SESSION_DESKTOP=xfce
+          startxfce4
+          EOF
           sudo chown PersianPl:PersianPl /home/PersianPl/.xsession
+          sudo chmod +x /home/PersianPl/.xsession
+
+          # 2) Rewrite startwm.sh so the session and D-Bus start correctly
+          sudo tee /etc/xrdp/startwm.sh > /dev/null <<'EOF'
+          #!/bin/sh
+          if [ -r /etc/profile ]; then . /etc/profile; fi
+          if [ -r "$HOME/.profile" ]; then . "$HOME/.profile"; fi
+          unset DBUS_SESSION_BUS_ADDRESS
+          unset XDG_RUNTIME_DIR
+          export XDG_CONFIG_DIRS=/etc/xdg
+          export XDG_DATA_DIRS=/usr/share:/usr/local/share
+          exec dbus-launch --exit-with-session startxfce4
+          EOF
+          sudo chmod +x /etc/xrdp/startwm.sh
+
+          # 3) Add xrdp to the ssl-cert group and restart
           sudo adduser xrdp ssl-cert || true
           sudo systemctl enable xrdp
           sudo systemctl restart xrdp
-          echo "XFCE desktop, XRDP, and content tools installed"
+          echo "XFCE desktop + xrdp (with correct session config) + content tools installed"
 
-      - name: 3. Install and Connect Tailscale
+      - name: 3. Install and Connect Tailscale VPN
         env:
           TAILSCALE_AUTHKEY: ${{ secrets.TAILSCALE_AUTHKEY }}
         run: |
+          # Install Tailscale
           curl -fsSL https://tailscale.com/install.sh | sudo sh
+
+          # Connect to the Tailscale network
           sudo tailscale up --authkey="$TAILSCALE_AUTHKEY" --hostname="github-ubuntu-desktop"
           sleep 5
 
+          # Get the Tailscale IP address
           ts_ip=$(sudo tailscale ip -4)
 
           echo ""
@@ -55,7 +82,7 @@ jobs:
           echo "  >> Connect with any RDP client (mstsc/Remmina) to: $ts_ip"
           echo "=================================================="
 
-      - name: 4. Keep Server Alive for 6 Hours
+      - name: 4. Keep Server Alive (6 Hours)
         run: |
           for i in $(seq 1 360); do
             sleep 60
