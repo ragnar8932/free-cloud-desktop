@@ -1,0 +1,63 @@
+name: Ubuntu Cloud Desktop
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+
+    steps:
+      - name: 1. Create User and Set Password
+        env:
+          RDP_PASSWORD: ${{ secrets.RDP_PASSWORD }}
+        run: |
+          sudo useradd -m -s /bin/bash PersianPl || true
+          echo "PersianPl:$RDP_PASSWORD" | sudo chpasswd
+          echo "PersianPl ALL=(ALL) NOPASSWD:ALL" | sudo tee /etc/sudoers.d/persianpl
+          echo "User PersianPl created"
+
+      - name: 2. Install XFCE Desktop, XRDP, and Content Tools
+        run: |
+          sudo apt-get update -y
+          # Install the lightweight XFCE desktop environment and XRDP server
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
+            xfce4 xfce4-goodies xrdp \
+            ffmpeg python3-pip imagemagick firefox
+          pip3 install --upgrade pip
+          pip3 install Pillow requests
+
+          # Configure XFCE as the default XRDP desktop session
+          echo "xfce4-session" | sudo tee /home/PersianPl/.xsession
+          sudo chown PersianPl:PersianPl /home/PersianPl/.xsession
+          sudo adduser xrdp ssl-cert || true
+          sudo systemctl enable xrdp
+          sudo systemctl restart xrdp
+          echo "XFCE desktop, XRDP, and content tools installed"
+
+      - name: 3. Install and Connect Tailscale
+        env:
+          TAILSCALE_AUTHKEY: ${{ secrets.TAILSCALE_AUTHKEY }}
+        run: |
+          curl -fsSL https://tailscale.com/install.sh | sudo sh
+          sudo tailscale up --authkey="$TAILSCALE_AUTHKEY" --hostname="github-ubuntu-desktop"
+          sleep 5
+
+          ts_ip=$(sudo tailscale ip -4)
+
+          echo ""
+          echo "=================================================="
+          echo "  >>> UBUNTU DESKTOP IS READY! <<<"
+          echo "  Tailscale IP : $ts_ip"
+          echo "  Username     : PersianPl"
+          echo "  Password     : (stored in GitHub Secret RDP_PASSWORD)"
+          echo "  >> Connect with any RDP client (mstsc/Remmina) to: $ts_ip"
+          echo "=================================================="
+
+      - name: 4. Keep Server Alive for 6 Hours
+        run: |
+          for i in $(seq 1 360); do
+            sleep 60
+            echo "[$i/360] Server running..."
+          done
