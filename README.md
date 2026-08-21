@@ -14,8 +14,6 @@ Three workflows are included:
 
 All three workflows use the same two GitHub Secrets. Depending on the workflow, common tools such as FFmpeg, Python, Pillow, ImageMagick, and Firefox are installed automatically.
 
-[فارسی](README_FA.md)
-
 ---
 
 ## Setup
