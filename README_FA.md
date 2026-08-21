@@ -1,3 +1,5 @@
+[English](README.md)
+
 # Free Cloud Desktop
 
 راه‌اندازی سرورهای موقت Windows و Ubuntu با استفاده از GitHub Actions و دسترسی از طریق Tailscale.
@@ -12,7 +14,6 @@
 
 هر سه Workflow از دو GitHub Secret مشترک استفاده می‌کنند. بسته به Workflow، ابزارهایی مثل FFmpeg، Python، Pillow، ImageMagick و Firefox نیز به‌صورت خودکار نصب می‌شوند.
 
-[English](README.md)
 
 ---
 
