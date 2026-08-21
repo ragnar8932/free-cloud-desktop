@@ -1,3 +1,5 @@
+[فارسی](README_FA.md)
+
 # Free Cloud Desktop
 
 Temporary Windows and Ubuntu machines running through GitHub Actions, with remote access over Tailscale.
