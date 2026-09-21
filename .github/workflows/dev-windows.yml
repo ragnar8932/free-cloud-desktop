@@ -1,4 +1,4 @@
-      - name: 3. Install Development Apps
+      - name: dev Windows Cloud RDP
         run: |
 
           Write-Host "Installing Git..."
