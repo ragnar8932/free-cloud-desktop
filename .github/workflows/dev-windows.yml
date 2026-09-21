@@ -1,4 +1,61 @@
-      - name: dev Windows Cloud RDP
+name: Windows Dev RDP
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+
+    runs-on: windows-latest
+    timeout-minutes: 360
+
+    steps:
+
+      - name: 1. Enable Remote Desktop
+        shell: powershell
+        run: |
+          Set-ItemProperty `
+          -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' `
+          -Name "fDenyTSConnections" `
+          -Value 0
+
+          Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+
+          Set-ItemProperty `
+          -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' `
+          -Name "UserAuthentication" `
+          -Value 1
+
+
+      - name: 2. Create RDP User
+        shell: powershell
+        env:
+          RDP_PASSWORD: ${{ secrets.RDP_PASSWORD }}
+
+        run: |
+
+          $Password = ConvertTo-SecureString `
+          $Env:RDP_PASSWORD `
+          -AsPlainText `
+          -Force
+
+
+          New-LocalUser `
+          -Name "PersianPl" `
+          -Password $Password `
+          -PasswordNeverExpires `
+          -ErrorAction SilentlyContinue
+
+
+          Add-LocalGroupMember `
+          -Group "Administrators" `
+          -Member "PersianPl" `
+          -ErrorAction SilentlyContinue
+
+
+
+      - name: 3. Install Development Tools
+        shell: powershell
         run: |
 
           Write-Host "Installing Git..."
@@ -9,45 +66,71 @@
           choco install nodejs-lts -y --no-progress
 
 
+          Write-Host "Installing VS Code..."
+          choco install vscode -y --no-progress
+
+
           Write-Host "Installing FFmpeg..."
           choco install ffmpeg -y --no-progress
 
 
 
-          Write-Host "Installing Anaconda..."
+          #
+          # Install Anaconda
+          #
+
+          Write-Host "Downloading Anaconda..."
 
           Invoke-WebRequest `
           "https://repo.anaconda.com/archive/Anaconda3-2026.07-1-Windows-x86_64.exe" `
-          -OutFile C:\anaconda.exe
+          -OutFile "C:\AnacondaInstaller.exe"
 
+
+          Write-Host "Installing Anaconda silently..."
 
           Start-Process `
-          C:\anaconda.exe `
+          "C:\AnacondaInstaller.exe" `
           -ArgumentList `
-          "/S /AddToPath=1 /RegisterPython=1 /D=C:\Anaconda3" `
+          "/S /InstallationType=JustMe /RegisterPython=1 /AddToPath=1 /D=C:\Anaconda3" `
           -Wait
 
 
-          Remove-Item C:\anaconda.exe
+          Remove-Item "C:\AnacondaInstaller.exe"
 
 
+
+          #
+          # Add Conda PATH
+          #
+
+          $env:Path += ";C:\Anaconda3;C:\Anaconda3\Scripts"
+
+
+
+          #
+          # Install Claude Desktop
+          #
 
           Write-Host "Installing Claude Desktop..."
 
           Invoke-WebRequest `
           "https://claude.ai/api/desktop/win32/x64/setup/latest/redirect" `
-          -OutFile C:\claude.exe
+          -OutFile "C:\ClaudeSetup.exe"
 
 
           Start-Process `
-          C:\claude.exe `
+          "C:\ClaudeSetup.exe" `
           -ArgumentList "/silent" `
           -Wait
 
 
-          Remove-Item C:\claude.exe
+          Remove-Item "C:\ClaudeSetup.exe"
 
 
+
+          #
+          # Install Claude Code
+          #
 
           Write-Host "Installing Claude Code..."
 
@@ -55,14 +138,151 @@
 
 
 
-          Write-Host "Checking installations..."
+      - name: 4. Install Python Packages
+        shell: powershell
+        run: |
+
+          $env:Path += ";C:\Anaconda3;C:\Anaconda3\Scripts"
+
+
+          python -m pip install --upgrade pip
+
+
+          pip install `
+          numpy `
+          pandas `
+          pillow `
+          requests
+
+
+
+      - name: 5. Create Desktop Shortcuts
+        shell: powershell
+        run: |
+
+          $Desktop = "C:\Users\Public\Desktop"
+
+          $Shell = New-Object -ComObject WScript.Shell
+
+
+
+          # Anaconda Prompt
+
+          $Shortcut = $Shell.CreateShortcut(
+          "$Desktop\Anaconda Prompt.lnk"
+          )
+
+          $Shortcut.TargetPath =
+          "C:\Anaconda3\Scripts\activate.bat"
+
+          $Shortcut.Save()
+
+
+
+          # Anaconda Navigator
+
+          $Shortcut = $Shell.CreateShortcut(
+          "$Desktop\Anaconda Navigator.lnk"
+          )
+
+          $Shortcut.TargetPath =
+          "C:\Anaconda3\Scripts\anaconda-navigator.exe"
+
+          $Shortcut.Save()
+
+
+
+          # VS Code
+
+          $Shortcut = $Shell.CreateShortcut(
+          "$Desktop\Visual Studio Code.lnk"
+          )
+
+          $Shortcut.TargetPath =
+          "C:\Program Files\Microsoft VS Code\Code.exe"
+
+          $Shortcut.Save()
+
+
+
+          # Claude Code Terminal Shortcut
+
+          $Shortcut = $Shell.CreateShortcut(
+          "$Desktop\Claude Code.lnk"
+          )
+
+          $Shortcut.TargetPath =
+          "C:\Windows\System32\cmd.exe"
+
+          $Shortcut.Arguments =
+          "/k claude"
+
+          $Shortcut.Save()
+
+
+
+      - name: 6. Install Tailscale
+        shell: powershell
+        env:
+          TAILSCALE_AUTHKEY: ${{ secrets.TAILSCALE_AUTHKEY }}
+
+        run: |
+
+          Invoke-WebRequest `
+          "https://pkgs.tailscale.com/stable/tailscale-setup-latest-amd64.msi" `
+          -OutFile "C:\tailscale.msi"
+
+
+          Start-Process `
+          msiexec.exe `
+          -ArgumentList "/i C:\tailscale.msi /quiet /norestart" `
+          -Wait
+
+
+          Start-Sleep 5
+
+
+          & "C:\Program Files\Tailscale\tailscale.exe" up `
+          --authkey="$Env:TAILSCALE_AUTHKEY" `
+          --hostname="dev-rdp"
+
+
+
+          $IP = & "C:\Program Files\Tailscale\tailscale.exe" ip -4
+
+
+          Write-Host ""
+          Write-Host "================================"
+          Write-Host "DEV RDP READY"
+          Write-Host "IP: $IP"
+          Write-Host "USER: PersianPl"
+          Write-Host "================================"
+
+
+
+      - name: 7. Verify Installation
+        shell: powershell
+        run: |
+
+          Write-Host "Checking tools..."
 
           python --version
           conda --version
           node --version
           npm --version
           claude --version
+          git --version
 
 
 
-          Write-Host "All development tools installed!" -ForegroundColor Green
+      - name: 8. Keep Alive
+        shell: powershell
+        run: |
+
+          for($i=1;$i -le 360;$i++){
+
+            Start-Sleep -Seconds 60
+
+            Write-Host "Server alive $i/360"
+
+          }
