@@ -287,11 +287,70 @@ jobs:
 
           Write-Host "Checking tools..."
 
+
+          Write-Host "Searching Anaconda folders..."
+
+          Get-ChildItem "C:\Users" -Directory -ErrorAction SilentlyContinue |
+          ForEach-Object {
+
+              $Path = Join-Path $_.FullName "anaconda3"
+
+              if (Test-Path $Path) {
+
+                  Write-Host "Found Anaconda at: $Path"
+
+              }
+
+          }
+
+
+          Write-Host "Checking common paths..."
+
+          $PossiblePaths = @(
+              "C:\Anaconda3",
+              "C:\ProgramData\anaconda3",
+              "C:\Users\runneradmin\anaconda3",
+              "C:\Users\runner\anaconda3"
+          )
+
+
+          foreach ($Path in $PossiblePaths) {
+
+              if (Test-Path "$Path\Scripts\conda.exe") {
+
+                  Write-Host "Conda found at: $Path"
+
+                  & "$Path\Scripts\conda.exe" --version
+
+                  break
+
+              }
+
+          }
+
+
+          Write-Host "Python..."
+
           python --version
-          conda --version
+
+
+          Write-Host "Node..."
+
           node --version
+
+
+          Write-Host "NPM..."
+
           npm --version
+
+
+          Write-Host "Claude..."
+
           claude --version
+
+
+          Write-Host "Git..."
+
           git --version
 
 
