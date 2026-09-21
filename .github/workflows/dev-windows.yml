@@ -81,9 +81,29 @@ jobs:
 
           Write-Host "Downloading Anaconda..."
 
-          Invoke-WebRequest `
-          "https://repo.anaconda.com/archive/Anaconda3-2026.07-1-Windows-x86_64.exe" `
-          -OutFile "C:\AnacondaInstaller.exe"
+          curl.exe `
+          -L `
+          --retry 5 `
+          --retry-delay 10 `
+          -o "C:\AnacondaInstaller.exe" `
+          "https://repo.anaconda.com/archive/Anaconda3-2026.07-1-Windows-x86_64.exe"
+
+
+          if (!(Test-Path "C:\AnacondaInstaller.exe")) {
+              Write-Error "Anaconda download failed!"
+              exit 1
+          }
+
+
+          $AnacondaSize = (Get-Item "C:\AnacondaInstaller.exe").Length / 1MB
+
+          Write-Host "Anaconda installer size: $AnacondaSize MB"
+
+
+          if ($AnacondaSize -lt 500) {
+              Write-Error "Anaconda installer is incomplete!"
+              exit 1
+          }
 
 
           Write-Host "Installing Anaconda silently..."
@@ -133,6 +153,8 @@ jobs:
           #
 
           Write-Host "Installing Claude Code..."
+
+          refreshenv
 
           npm install -g @anthropic-ai/claude-code
 
