@@ -1,0 +1,68 @@
+      - name: 3. Install Development Apps
+        run: |
+
+          Write-Host "Installing Git..."
+          choco install git -y --no-progress
+
+
+          Write-Host "Installing Node.js..."
+          choco install nodejs-lts -y --no-progress
+
+
+          Write-Host "Installing FFmpeg..."
+          choco install ffmpeg -y --no-progress
+
+
+
+          Write-Host "Installing Anaconda..."
+
+          Invoke-WebRequest `
+          "https://repo.anaconda.com/archive/Anaconda3-2026.07-1-Windows-x86_64.exe" `
+          -OutFile C:\anaconda.exe
+
+
+          Start-Process `
+          C:\anaconda.exe `
+          -ArgumentList `
+          "/S /AddToPath=1 /RegisterPython=1 /D=C:\Anaconda3" `
+          -Wait
+
+
+          Remove-Item C:\anaconda.exe
+
+
+
+          Write-Host "Installing Claude Desktop..."
+
+          Invoke-WebRequest `
+          "https://claude.ai/api/desktop/win32/x64/setup/latest/redirect" `
+          -OutFile C:\claude.exe
+
+
+          Start-Process `
+          C:\claude.exe `
+          -ArgumentList "/silent" `
+          -Wait
+
+
+          Remove-Item C:\claude.exe
+
+
+
+          Write-Host "Installing Claude Code..."
+
+          npm install -g @anthropic-ai/claude-code
+
+
+
+          Write-Host "Checking installations..."
+
+          python --version
+          conda --version
+          node --version
+          npm --version
+          claude --version
+
+
+
+          Write-Host "All development tools installed!" -ForegroundColor Green
