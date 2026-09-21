@@ -194,6 +194,9 @@ jobs:
           )
 
           $Shortcut.TargetPath =
+          "C:\Windows\System32\cmd.exe"
+
+          $Shortcut.TargetPath =
           "C:\Anaconda3\Scripts\activate.bat"
 
           $Shortcut.Save()
@@ -221,22 +224,6 @@ jobs:
 
           $Shortcut.TargetPath =
           "C:\Program Files\Microsoft VS Code\Code.exe"
-
-          $Shortcut.Save()
-
-
-
-          # Claude Code Terminal Shortcut
-
-          $Shortcut = $Shell.CreateShortcut(
-          "$Desktop\Claude Code.lnk"
-          )
-
-          $Shortcut.TargetPath =
-          "C:\Windows\System32\cmd.exe"
-
-          $Shortcut.Arguments =
-          "/k claude"
 
           $Shortcut.Save()
 
@@ -342,11 +329,6 @@ jobs:
           Write-Host "NPM..."
 
           npm --version
-
-
-          Write-Host "Claude..."
-
-          claude --version
 
 
           Write-Host "Git..."
