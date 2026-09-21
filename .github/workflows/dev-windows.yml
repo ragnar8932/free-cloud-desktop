@@ -133,18 +133,31 @@ jobs:
 
           Write-Host "Installing Claude Desktop..."
 
-          Invoke-WebRequest `
-          "https://claude.ai/api/desktop/win32/x64/setup/latest/redirect" `
-          -OutFile "C:\ClaudeSetup.exe"
+          curl.exe `
+          -L `
+          --retry 5 `
+          --retry-delay 10 `
+          -o "C:\Claude.msix" `
+          "https://claudeapp.agentsmirror.com/latest/win-x64"
 
 
-          Start-Process `
-          "C:\ClaudeSetup.exe" `
-          -ArgumentList "/silent" `
-          -Wait
+          if (!(Test-Path "C:\Claude.msix")) {
+              Write-Error "Claude Desktop download failed!"
+              exit 1
+          }
 
 
-          Remove-Item "C:\ClaudeSetup.exe"
+          Write-Host "Installing Claude MSIX..."
+
+
+          Add-AppxPackage `
+          -Path "C:\Claude.msix"
+
+
+          Remove-Item "C:\Claude.msix"
+
+
+          Write-Host "Claude Desktop installed!"
 
 
 
