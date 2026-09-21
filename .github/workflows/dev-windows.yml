@@ -133,21 +133,37 @@ jobs:
 
           Write-Host "Installing Claude Desktop..."
 
+          $ClaudeUrl = "https://api.anthropic.com/api/desktop/win32/x64/msix/latest/redirect"
+
+
+          Write-Host "Downloading Claude MSIX..."
+
           curl.exe `
           -L `
           --retry 5 `
           --retry-delay 10 `
           -o "C:\Claude.msix" `
-          "https://claudeapp.agentsmirror.com/latest/win-x64"
+          $ClaudeUrl
 
 
           if (!(Test-Path "C:\Claude.msix")) {
-              Write-Error "Claude Desktop download failed!"
-              exit 1
+          Write-Error "Claude MSIX download failed!"
+          exit 1
           }
 
 
-          Write-Host "Installing Claude MSIX..."
+          $ClaudeSize = (Get-Item "C:\Claude.msix").Length / 1MB
+
+          Write-Host "Claude file size: $ClaudeSize MB"
+
+
+          if ($ClaudeSize -lt 100) {
+          Write-Error "Downloaded file is not a valid Claude MSIX!"
+          exit 1
+          }
+
+
+          Write-Host "Installing Claude Desktop..."
 
 
           Add-AppxPackage `
@@ -158,36 +174,6 @@ jobs:
 
 
           Write-Host "Claude Desktop installed!"
-
-
-
-          #
-          # Install Claude Desktop
-          #
-
-          Write-Host "Installing Claude Desktop..."
-
-          curl.exe `
-          -L `
-          --retry 5 `
-          --retry-delay 10 `
-          -o "C:\ClaudeSetup.exe" `
-          "https://downloads.claude.ai/windows/ClaudeSetup.exe"
-
-
-          if (!(Test-Path "C:\ClaudeSetup.exe")) {
-              Write-Error "Claude Desktop download failed!"
-              exit 1
-          }
-
-
-          Start-Process `
-          "C:\ClaudeSetup.exe" `
-          -ArgumentList "/silent" `
-          -Wait
-
-
-          Remove-Item "C:\ClaudeSetup.exe"
 
 
 
