@@ -149,32 +149,32 @@ jobs:
 
 
           #
-          # Install Claude Code
+          # Install Claude Desktop
           #
 
-          Write-Host "Installing Claude Code..."
+          Write-Host "Installing Claude Desktop..."
 
-          refreshenv
-
-          npm install -g @anthropic-ai/claude-code
-
-
-
-      - name: 4. Install Python Packages
-        shell: powershell
-        run: |
-
-          $env:Path += ";C:\Anaconda3;C:\Anaconda3\Scripts"
+          curl.exe `
+          -L `
+          --retry 5 `
+          --retry-delay 10 `
+          -o "C:\ClaudeSetup.exe" `
+          "https://downloads.claude.ai/windows/ClaudeSetup.exe"
 
 
-          python -m pip install --upgrade pip
+          if (!(Test-Path "C:\ClaudeSetup.exe")) {
+              Write-Error "Claude Desktop download failed!"
+              exit 1
+          }
 
 
-          pip install `
-          numpy `
-          pandas `
-          pillow `
-          requests
+          Start-Process `
+          "C:\ClaudeSetup.exe" `
+          -ArgumentList "/silent" `
+          -Wait
+
+
+          Remove-Item "C:\ClaudeSetup.exe"
 
 
 
